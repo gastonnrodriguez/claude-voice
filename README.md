@@ -21,7 +21,7 @@ Dentro de Claude Code:
 
 La primera sesión instala el motor de voz en segundo plano (~300 MB, una sola vez) y avisa "ya tengo voz" cuando termina. Mientras tanto usa la voz del sistema (`spd-say`).
 
-Requisitos: Python 3 con `venv` (en Ubuntu: `sudo apt install python3-venv`) y PipeWire o PulseAudio.
+Requisitos: Python 3 y PipeWire o PulseAudio. No hace falta `python3-venv`: si falta, el plugin instala pip por su cuenta.
 
 ## Configuración
 
