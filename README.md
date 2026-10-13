@@ -2,8 +2,8 @@
 
 Claude Code te avisa **por voz** cuando termina una tarea o necesita tu atención, para que puedas dejarlo trabajando en otro monitor sin estar mirándolo.
 
-- "Gastón, terminé en margenpro." y enseguida un resumen de una línea que escribe el propio Claude ("listo el endpoint de pagos, falta probar el webhook").
-- "Gastón, en colate necesito tu atención." cuando pide un permiso o te hace una pregunta.
+- "Ana, terminé en tienda online." y enseguida un resumen de una línea que escribe el propio Claude ("listo el endpoint de pagos, falta probar el webhook").
+- "Ana, en app del clima necesito tu atención." cuando pide un permiso o te hace una pregunta.
 - La respuesta de texto queda intacta: el resumen viaja en un comentario HTML (`<!-- voice: ... -->`) al final de la respuesta.
 - Voz local y gratis con [Piper](https://github.com/OHF-Voice/piper1-gpl): sin API keys, sin GPU.
 - Si varios agentes terminan a la vez, hablan de a uno.
@@ -25,14 +25,16 @@ Requisitos: Python 3 y PipeWire o PulseAudio. No hace falta `python3-venv`: si f
 
 ## Configuración
 
+Al instalar, el plugin te pregunta **cómo querés que te llame**. Para cambiarlo después: desde `/plugin`, en las opciones de **voice**, o con `claude plugin configure voice@claude-voice`. Si lo dejás vacío usa el primer nombre de tu usuario del sistema; con un guion (`-`) no dice ningún nombre.
+
 Opcional, en `~/.config/claude-voice/config.json`:
 
 ```json
-{ "nombre": "Gastón", "voz": "es_AR-daniela-high" }
+{ "voz": "es_AR-daniela-high" }
 ```
 
-- `nombre`: cómo te llama. Por defecto, el primer nombre de tu usuario del sistema. `""` para no decir nombre.
 - `voz`: cualquier voz del [catálogo de Piper](https://huggingface.co/rhasspy/piper-voices).
+- `nombre`: también se puede poner acá; lo que elijas en el plugin tiene prioridad.
 
 ## Cómo funciona
 

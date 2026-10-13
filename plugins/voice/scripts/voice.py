@@ -50,6 +50,10 @@ def config():
             c.update(json.load(f))
     except Exception:
         pass
+    # Lo que el usuario eligió al instalar el plugin (userConfig) manda sobre el archivo.
+    elegido = os.environ.get("CLAUDE_PLUGIN_OPTION_NOMBRE", "").strip()
+    if elegido:
+        c["nombre"] = "" if elegido == "-" else elegido
     if c["nombre"] is None:
         # Por defecto, el primer nombre de la cuenta del sistema.
         try:
