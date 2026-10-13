@@ -1,0 +1,11 @@
+{
+  "name": "claude-voice",
+  "owner": { "name": "Gastón Rodríguez" },
+  "plugins": [
+    {
+      "name": "voice",
+      "source": "./plugins/voice",
+      "description": "Claude te avisa por voz cuando termina una tarea o necesita tu atención."
+    }
+  ]
+}

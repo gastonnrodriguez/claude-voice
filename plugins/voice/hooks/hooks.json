@@ -1,0 +1,14 @@
+{
+  "hooks": {
+    "SessionStart": [
+      { "hooks": [ { "type": "command", "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/scripts/voice.py\" session-start" } ] }
+    ],
+    "Stop": [
+      { "hooks": [ { "type": "command", "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/scripts/voice.py\" stop" } ] }
+    ],
+    "Notification": [
+      { "matcher": "permission_prompt|elicitation_dialog",
+        "hooks": [ { "type": "command", "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/scripts/voice.py\" notification" } ] }
+    ]
+  }
+}
