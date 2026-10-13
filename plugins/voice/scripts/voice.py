@@ -106,6 +106,11 @@ def instalar(c):
     if instalado(c):
         return
     log("instalando motor de voz", c["voz"])
+    venv = os.path.join(DATA, "venv")
+    # Un intento anterior sin python3-venv deja un venv roto, sin pip: lo rehacemos.
+    if os.path.exists(VENV_PY) and subprocess.run([VENV_PY, "-m", "pip", "--version"],
+                                                  capture_output=True).returncode != 0:
+        shutil.rmtree(venv, ignore_errors=True)
     pasos = []
     if not os.path.exists(VENV_PY):
         pasos.append([sys.executable, "-m", "venv", os.path.join(DATA, "venv")])
@@ -114,7 +119,12 @@ def instalar(c):
     for cmd in pasos:
         r = subprocess.run(cmd, capture_output=True, text=True)
         if r.returncode != 0:
-            log("ERROR instalando:", " ".join(cmd), "\n", (r.stderr or r.stdout)[-800:])
+            salida = (r.stderr or r.stdout)
+            log("ERROR instalando:", " ".join(cmd), "\n", salida[-800:])
+            if "ensurepip" in salida or "venv" in cmd:
+                shutil.rmtree(venv, ignore_errors=True)
+                log("FALTA python3-venv. Solución: sudo apt install python3-venv y abrí una sesión nueva.")
+                hablar_sistema("Para tener la voz buena, falta instalar python tres venv.")
             return
     log("instalación completa")
     hablar(c, [(saludo(c, "ya tengo voz. Te aviso cuando termine cada tarea."), True)])
