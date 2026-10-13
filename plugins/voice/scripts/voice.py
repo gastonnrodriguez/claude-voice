@@ -95,6 +95,35 @@ def limpiar_hooks_viejos():
         log("hooks del prototipo claude-jarvis eliminados de", p)
 
 
+def correr(cmd):
+    r = subprocess.run(cmd, capture_output=True, text=True)
+    if r.returncode != 0:
+        log("ERROR instalando:", " ".join(cmd), "\n", (r.stderr or r.stdout)[-800:])
+    return r.returncode == 0
+
+
+def crear_venv(venv):
+    """Crea el venv con pip. Sin python3-venv (falta ensurepip, típico de Ubuntu),
+    lo crea sin pip y se lo instala aparte, así no hace falta sudo."""
+    if subprocess.run([sys.executable, "-m", "venv", venv], capture_output=True).returncode == 0:
+        return True
+    shutil.rmtree(venv, ignore_errors=True)
+    if not correr([sys.executable, "-m", "venv", "--without-pip", venv]):
+        return False
+    log("sin ensurepip: instalo pip en el venv por separado")
+    # Si el sistema tiene pip (python3-pip), lo usamos para instalar pip dentro del venv.
+    if correr([sys.executable, "-m", "pip", "--python", VENV_PY, "install", "-q", "pip"]):
+        return True
+    get_pip = os.path.join(DATA, "get-pip.py")
+    ok = (correr(["curl", "-sSfL", "-o", get_pip, "https://bootstrap.pypa.io/get-pip.py"])
+          and correr([VENV_PY, "-I", get_pip, "-q"]))
+    try:
+        os.remove(get_pip)
+    except OSError:
+        pass
+    return ok
+
+
 def instalar(c):
     os.makedirs(DATA, exist_ok=True)
     lock = open(os.path.join(DATA, "instalar.lock"), "w")
@@ -111,20 +140,18 @@ def instalar(c):
     if os.path.exists(VENV_PY) and subprocess.run([VENV_PY, "-m", "pip", "--version"],
                                                   capture_output=True).returncode != 0:
         shutil.rmtree(venv, ignore_errors=True)
-    pasos = []
-    if not os.path.exists(VENV_PY):
-        pasos.append([sys.executable, "-m", "venv", os.path.join(DATA, "venv")])
-    pasos.append([VENV_PY, "-m", "pip", "install", "-q", "piper-tts"])
-    pasos.append([VENV_PY, "-m", "piper.download_voices", "--download-dir", DATA, c["voz"]])
+    if not os.path.exists(VENV_PY) and not crear_venv(venv):
+        shutil.rmtree(venv, ignore_errors=True)
+        paquete = "python%d.%d-venv" % sys.version_info[:2]
+        log(f"No pude crear el entorno de Python. Solución: sudo apt install {paquete}")
+        hablar_sistema("Para tener la voz buena, falta instalar python venv. Mirá el log.")
+        return
+    pasos = [
+        [VENV_PY, "-m", "pip", "install", "-q", "piper-tts"],
+        [VENV_PY, "-m", "piper.download_voices", "--download-dir", DATA, c["voz"]],
+    ]
     for cmd in pasos:
-        r = subprocess.run(cmd, capture_output=True, text=True)
-        if r.returncode != 0:
-            salida = (r.stderr or r.stdout)
-            log("ERROR instalando:", " ".join(cmd), "\n", salida[-800:])
-            if "ensurepip" in salida or "venv" in cmd:
-                shutil.rmtree(venv, ignore_errors=True)
-                log("FALTA python3-venv. Solución: sudo apt install python3-venv y abrí una sesión nueva.")
-                hablar_sistema("Para tener la voz buena, falta instalar python tres venv.")
+        if not correr(cmd):
             return
     log("instalación completa")
     hablar(c, [(saludo(c, "ya tengo voz. Te aviso cuando termine cada tarea."), True)])
