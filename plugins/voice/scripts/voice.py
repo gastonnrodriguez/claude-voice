@@ -254,6 +254,10 @@ def obtener_resumen(datos):
 
 def trabajo(evento, datos):
     c = config()
+    log("evento", evento)
+    if evento in ("stop", "notification") and not instalado(c):
+        # No dependemos solo de SessionStart: cualquier aviso dispara la instalación pendiente.
+        en_segundo_plano("instalar", {})
     if evento == "instalar":
         instalar(c)
     elif evento == "stop":

@@ -1,6 +1,6 @@
 {
   "name": "voice",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Claude te avisa por voz cuando termina una tarea o necesita tu atención.",
   "author": { "name": "Gastón Rodríguez" }
 }
