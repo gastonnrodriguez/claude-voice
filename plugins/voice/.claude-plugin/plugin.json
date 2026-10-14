@@ -7,7 +7,7 @@
     "nombre": {
       "type": "string",
       "title": "Cómo querés que te llame",
-      "description": "El nombre con el que empieza cada aviso, por ejemplo \"Ana, terminé en tienda online\". Vacío usa el primer nombre de tu usuario del sistema; un guion (-) no dice ningún nombre.",
+      "description": "El nombre con el que empieza cada aviso, por ejemplo \"Gastón, terminé en tienda online\". Vacío usa el primer nombre de tu usuario del sistema; un guion (-) no dice ningún nombre.",
       "default": ""
     }
   }

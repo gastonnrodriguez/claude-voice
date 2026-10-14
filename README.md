@@ -2,8 +2,8 @@
 
 Claude Code te avisa **por voz** cuando termina una tarea o necesita tu atención, para que puedas dejarlo trabajando en otro monitor sin estar mirándolo.
 
-- "Ana, terminé en tienda online." y enseguida un resumen de una línea que escribe el propio Claude ("listo el endpoint de pagos, falta probar el webhook").
-- "Ana, en app del clima necesito tu atención." cuando pide un permiso o te hace una pregunta.
+- "Gastón, terminé en tienda online." y enseguida un resumen de una línea que escribe el propio Claude ("listo el endpoint de pagos, falta probar el webhook").
+- "Gastón, en app del clima necesito tu atención." cuando pide un permiso o te hace una pregunta.
 - La respuesta de texto queda intacta: el resumen viaja en un comentario HTML (`<!-- voice: ... -->`) al final de la respuesta.
 - Voz local y gratis con [Piper](https://github.com/OHF-Voice/piper1-gpl): sin API keys, sin GPU.
 - Si varios agentes terminan a la vez, hablan de a uno.
