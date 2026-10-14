@@ -1,13 +1,13 @@
 {
   "name": "voice",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Claude te avisa por voz cuando termina una tarea o necesita tu atención.",
   "author": { "name": "Gastón Rodríguez" },
   "userConfig": {
     "nombre": {
       "type": "string",
       "title": "Cómo querés que te llame",
-      "description": "El nombre con el que empieza cada aviso, por ejemplo \"Gastón, terminé en tienda online\". Vacío usa el primer nombre de tu usuario del sistema; un guion (-) no dice ningún nombre.",
+      "description": "El nombre con el que empieza cada aviso, por ejemplo \"Gastón, terminé en tienda online\". Vacío usa el primer nombre de tu usuario del sistema (en Windows, ninguno); un guion (-) no dice ningún nombre.",
       "default": ""
     }
   }

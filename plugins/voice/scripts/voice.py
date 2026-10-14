@@ -1,29 +1,49 @@
 #!/usr/bin/env python3
-"""claude-voice — avisos por voz para Claude Code (MVP, Linux).
+"""claude-voice — avisos por voz para Claude Code (Linux, macOS y Windows).
 
 Los hooks llaman a este script; el script responde al instante y deja el
 trabajo lento (generar voz, reproducir) a un proceso en segundo plano.
 Solo usa la biblioteca estándar de Python.
 """
-import fcntl
 import hashlib
 import json
 import os
-import pwd
 import re
 import shutil
 import subprocess
 import sys
 import threading
 import time
+import urllib.request
+
+WINDOWS = os.name == "nt"
+MAC = sys.platform == "darwin"
+if WINDOWS:
+    import msvcrt
+    import winsound
+else:
+    import fcntl
+    import pwd
 
 HOME = os.path.expanduser("~")
-DATA = os.environ.get("CLAUDE_VOICE_HOME", os.path.join(HOME, ".local/share/claude-voice"))
-CONF = os.path.join(HOME, ".config/claude-voice/config.json")
+if WINDOWS:
+    _DATA = os.path.join(os.environ.get("LOCALAPPDATA", HOME), "claude-voice")
+    CONF = os.path.join(os.environ.get("APPDATA", HOME), "claude-voice", "config.json")
+elif MAC:
+    _DATA = os.path.join(HOME, "Library", "Application Support", "claude-voice")
+    CONF = os.path.join(_DATA, "config.json")
+else:
+    _DATA = os.path.join(HOME, ".local/share/claude-voice")
+    CONF = os.path.join(HOME, ".config/claude-voice/config.json")
+DATA = os.environ.get("CLAUDE_VOICE_HOME", _DATA)
 CACHE = os.path.join(DATA, "cache")
 TMP = os.path.join(DATA, "tmp")
 LOG = os.path.join(DATA, "claude-voice.log")
-VENV_PY = os.path.join(DATA, "venv/bin/python")
+VENV_PY = os.path.join(DATA, "venv", "Scripts", "python.exe") if WINDOWS else os.path.join(DATA, "venv/bin/python")
+# Piper lee el texto por stdin: en Windows, sin esto, lo decodifica como cp1252 y rompe los acentos.
+ENV_UTF8 = dict(os.environ, PYTHONUTF8="1", PYTHONIOENCODING="utf-8")
+# En Windows, que los procesos auxiliares no abran una consola por cada aviso.
+SIN_VENTANA = subprocess.CREATE_NO_WINDOW if WINDOWS else 0
 MARCA = re.compile(r"<!--\s*voice:\s*(.+?)\s*-->", re.S)
 
 INSTRUCCION = (
@@ -39,14 +59,42 @@ INSTRUCCION = (
 
 def log(*partes):
     os.makedirs(DATA, exist_ok=True)
-    with open(LOG, "a") as f:
-        f.write(time.strftime("%F %T ") + " ".join(str(p) for p in partes) + "\n")
+    with open(LOG, "a", encoding="utf-8") as f:
+        f.write(time.strftime("%Y-%m-%d %H:%M:%S ") + " ".join(str(p) for p in partes) + "\n")
+
+
+def bloquear(f, esperar=True):
+    """Lock exclusivo sobre un archivo abierto; se libera al cerrarlo. False si está tomado y no esperamos."""
+    if not WINDOWS:
+        try:
+            fcntl.flock(f, fcntl.LOCK_EX | (0 if esperar else fcntl.LOCK_NB))
+            return True
+        except OSError:
+            return False
+    while True:
+        try:
+            msvcrt.locking(f.fileno(), msvcrt.LK_NBLCK, 1)
+            return True
+        except OSError:
+            if not esperar:
+                return False
+            time.sleep(0.2)
+
+
+def nombre_del_sistema():
+    """Primer nombre de la cuenta del sistema (en Windows no hay uno confiable)."""
+    if WINDOWS:
+        return ""
+    try:
+        return pwd.getpwuid(os.getuid()).pw_gecos.split(",")[0].split()[0]
+    except Exception:
+        return ""
 
 
 def config():
     c = {"voz": "es_AR-daniela-high", "nombre": None}
     try:
-        with open(CONF) as f:
+        with open(CONF, encoding="utf-8") as f:
             c.update(json.load(f))
     except Exception:
         pass
@@ -55,11 +103,7 @@ def config():
     if elegido:
         c["nombre"] = "" if elegido == "-" else elegido
     if c["nombre"] is None:
-        # Por defecto, el primer nombre de la cuenta del sistema.
-        try:
-            c["nombre"] = pwd.getpwuid(os.getuid()).pw_gecos.split(",")[0].split()[0]
-        except Exception:
-            c["nombre"] = ""
+        c["nombre"] = nombre_del_sistema()
     return c
 
 
@@ -77,7 +121,7 @@ def limpiar_hooks_viejos():
     """Saca los hooks del prototipo anterior (claude-jarvis) para no hablar dos veces."""
     p = os.path.join(HOME, ".claude/settings.json")
     try:
-        with open(p) as f:
+        with open(p, encoding="utf-8") as f:
             s = json.load(f)
     except Exception:
         return
@@ -94,13 +138,14 @@ def limpiar_hooks_viejos():
     if cambio:
         if not hooks:
             s.pop("hooks", None)
-        with open(p, "w") as f:
+        with open(p, "w", encoding="utf-8") as f:
             json.dump(s, f, indent=2)
         log("hooks del prototipo claude-jarvis eliminados de", p)
 
 
 def correr(cmd):
-    r = subprocess.run(cmd, capture_output=True, text=True)
+    r = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace",
+                       env=ENV_UTF8, creationflags=SIN_VENTANA)
     if r.returncode != 0:
         log("ERROR instalando:", " ".join(cmd), "\n", (r.stderr or r.stdout)[-800:])
     return r.returncode == 0
@@ -109,7 +154,8 @@ def correr(cmd):
 def crear_venv(venv):
     """Crea el venv con pip. Sin python3-venv (falta ensurepip, típico de Ubuntu),
     lo crea sin pip y se lo instala aparte, así no hace falta sudo."""
-    if subprocess.run([sys.executable, "-m", "venv", venv], capture_output=True).returncode == 0:
+    if subprocess.run([sys.executable, "-m", "venv", venv], capture_output=True,
+                      creationflags=SIN_VENTANA).returncode == 0:
         return True
     shutil.rmtree(venv, ignore_errors=True)
     if not correr([sys.executable, "-m", "venv", "--without-pip", venv]):
@@ -119,8 +165,12 @@ def crear_venv(venv):
     if correr([sys.executable, "-m", "pip", "--python", VENV_PY, "install", "-q", "pip"]):
         return True
     get_pip = os.path.join(DATA, "get-pip.py")
-    ok = (correr(["curl", "-sSfL", "-o", get_pip, "https://bootstrap.pypa.io/get-pip.py"])
-          and correr([VENV_PY, "-I", get_pip, "-q"]))
+    try:
+        urllib.request.urlretrieve("https://bootstrap.pypa.io/get-pip.py", get_pip)
+        ok = correr([VENV_PY, "-I", get_pip, "-q"])
+    except Exception as e:
+        log("ERROR bajando get-pip.py:", repr(e))
+        ok = False
     try:
         os.remove(get_pip)
     except OSError:
@@ -131,9 +181,7 @@ def crear_venv(venv):
 def instalar(c):
     os.makedirs(DATA, exist_ok=True)
     lock = open(os.path.join(DATA, "instalar.lock"), "w")
-    try:
-        fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
-    except OSError:
+    if not bloquear(lock, esperar=False):
         return  # otra sesión ya está instalando
     limpiar_hooks_viejos()
     if instalado(c):
@@ -141,14 +189,17 @@ def instalar(c):
     log("instalando motor de voz", c["voz"])
     venv = os.path.join(DATA, "venv")
     # Un intento anterior sin python3-venv deja un venv roto, sin pip: lo rehacemos.
-    if os.path.exists(VENV_PY) and subprocess.run([VENV_PY, "-m", "pip", "--version"],
-                                                  capture_output=True).returncode != 0:
+    if os.path.exists(VENV_PY) and subprocess.run([VENV_PY, "-m", "pip", "--version"], capture_output=True,
+                                                  creationflags=SIN_VENTANA).returncode != 0:
         shutil.rmtree(venv, ignore_errors=True)
     if not os.path.exists(VENV_PY) and not crear_venv(venv):
         shutil.rmtree(venv, ignore_errors=True)
-        paquete = "python%d.%d-venv" % sys.version_info[:2]
-        log(f"No pude crear el entorno de Python. Solución: sudo apt install {paquete}")
-        hablar_sistema("Para tener la voz buena, falta instalar python venv. Mirá el log.")
+        if WINDOWS or MAC:
+            log("No pude crear el entorno de Python. Instalá Python 3 desde https://www.python.org/downloads/")
+        else:
+            paquete = "python%d.%d-venv" % sys.version_info[:2]
+            log(f"No pude crear el entorno de Python. Solución: sudo apt install {paquete}")
+        hablar_sistema("Para tener la voz buena, me falta algo de Python. Mirá el log.")
         return
     pasos = [
         [VENV_PY, "-m", "pip", "install", "-q", "piper-tts"],
@@ -173,7 +224,7 @@ def sintetizar(c, texto, guardar):
     os.makedirs(carpeta, exist_ok=True)
     parcial = os.path.join(carpeta, h + ".parcial.wav")
     r = subprocess.run([VENV_PY, "-m", "piper", "-m", modelo(c), "-f", parcial],
-                       input=texto.encode(), capture_output=True)
+                       input=texto.encode("utf-8"), capture_output=True, env=ENV_UTF8, creationflags=SIN_VENTANA)
     if r.returncode != 0 or not os.path.exists(parcial):
         log("ERROR piper:", r.stderr.decode(errors="ignore")[-300:])
         return None
@@ -182,16 +233,46 @@ def sintetizar(c, texto, guardar):
 
 
 def reproducir(ruta):
-    for cmd in (["pw-play"], ["paplay"], ["aplay", "-q"]):
+    if WINDOWS:
+        winsound.PlaySound(ruta, winsound.SND_FILENAME)
+        return
+    for cmd in (["afplay"], ["pw-play"], ["paplay"], ["aplay", "-q"]):
         if shutil.which(cmd[0]):
             subprocess.run(cmd + [ruta], capture_output=True)
             return
-    log("ERROR: no encontré reproductor de audio (pw-play, paplay, aplay)")
+    log("ERROR: no encontré reproductor de audio (afplay, pw-play, paplay, aplay)")
+
+
+VOZ_WINDOWS = (
+    "Add-Type -AssemblyName System.Speech;"
+    "$s = New-Object System.Speech.Synthesis.SpeechSynthesizer;"
+    "$v = $s.GetInstalledVoices() | Where-Object { $_.VoiceInfo.Culture.Name -like 'es*' } | Select-Object -First 1;"
+    "if ($v) { $s.SelectVoice($v.VoiceInfo.Name) };"
+    "$s.Speak($env:CLAUDE_VOICE_TEXTO)"
+)
+
+
+def voz_espanol_mac():
+    """Una voz en español de macOS (por ejemplo Paulina o Mónica), si hay alguna instalada."""
+    r = subprocess.run(["say", "-v", "?"], capture_output=True, text=True)
+    for linea in r.stdout.splitlines():
+        m = re.match(r"(.+?)\s+(es_\w+)\s", linea)
+        if m:
+            return m.group(1).strip()
+    return None
 
 
 def hablar_sistema(texto):
     """Voz de emergencia mientras Piper no está instalado."""
-    if shutil.which("spd-say"):
+    if WINDOWS:
+        # El texto viaja por variable de entorno para no tener que escaparlo en PowerShell.
+        subprocess.run(["powershell", "-NoProfile", "-NonInteractive", "-Command", VOZ_WINDOWS],
+                       env=dict(os.environ, CLAUDE_VOICE_TEXTO=texto), capture_output=True,
+                       creationflags=SIN_VENTANA)
+    elif MAC:
+        voz = voz_espanol_mac()
+        subprocess.run(["say"] + (["-v", voz] if voz else []) + [texto], capture_output=True)
+    elif shutil.which("spd-say"):
         subprocess.run(["spd-say", "-w", "-l", "es", texto], capture_output=True)
     else:
         log("sin motor de voz todavía; no pude decir:", texto)
@@ -201,7 +282,7 @@ def hablar(c, partes):
     """partes: lista de (texto, guardar_en_cache). Habla de a una sesión por vez."""
     os.makedirs(DATA, exist_ok=True)
     with open(os.path.join(DATA, "hablar.lock"), "w") as lock:
-        fcntl.flock(lock, fcntl.LOCK_EX)  # cola: si dos agentes terminan juntos, esperan turno
+        bloquear(lock)  # cola: si dos agentes terminan juntos, esperan turno
         if not instalado(c):
             for texto, _ in partes:
                 hablar_sistema(texto)
@@ -270,7 +351,7 @@ def resumen_del_transcript(ruta):
 
 
 def obtener_resumen(datos):
-    r = resumen_de(datos.get("last_assistant_message", ""))
+    r = datos.get("resumen", "")
     if r or not datos.get("transcript_path"):
         return r
     for _ in range(4):  # el transcript puede tardar un instante en escribirse
@@ -302,11 +383,21 @@ def trabajo(evento, datos):
 
 
 def en_segundo_plano(evento, datos):
-    subprocess.Popen(
-        [sys.executable, os.path.abspath(__file__), "_trabajo", evento, json.dumps(datos)],
-        stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-        start_new_session=True,
-    )
+    # Solo lo que usa trabajo(): la respuesta entera de Claude puede superar el límite de
+    # largo de la línea de comandos (32 KB en Windows).
+    datos = {"cwd": datos.get("cwd"), "transcript_path": datos.get("transcript_path"),
+             "resumen": resumen_de(datos.get("last_assistant_message", ""))}
+    cmd = [sys.executable, os.path.abspath(__file__), "_trabajo", evento, json.dumps(datos)]
+    opciones = dict(stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    if not WINDOWS:
+        subprocess.Popen(cmd, start_new_session=True, **opciones)
+        return
+    # Que sobreviva al hook: proceso aparte, sin consola y, si se puede, fuera del job de Claude Code.
+    flags = subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.CREATE_NO_WINDOW
+    try:
+        subprocess.Popen(cmd, creationflags=flags | subprocess.CREATE_BREAKAWAY_FROM_JOB, **opciones)
+    except OSError:
+        subprocess.Popen(cmd, creationflags=flags, **opciones)
 
 
 def main():
@@ -321,16 +412,17 @@ def main():
             log("ERROR en", sys.argv[2], repr(e))
         return
     if evento == "probar":  # prueba manual, en primer plano
-        trabajo("stop", {"cwd": os.getcwd(), "last_assistant_message": "<!-- voice: esto es una prueba -->"})
+        trabajo("stop", {"cwd": os.getcwd(), "resumen": "esto es una prueba"})
         return
     try:
-        datos = json.load(sys.stdin)
+        datos = json.loads(sys.stdin.buffer.read().decode("utf-8"))
     except Exception:
         datos = {}
     if evento == "session-start":
         if not instalado(config()):
             en_segundo_plano("instalar", {})
-        print(INSTRUCCION)  # SessionStart: lo que se imprime se agrega al contexto de Claude
+        # SessionStart: lo que se imprime se agrega al contexto de Claude. En UTF-8 aunque Windows use cp1252.
+        sys.stdout.buffer.write((INSTRUCCION + "\n").encode("utf-8"))
     elif evento in ("stop", "notification"):
         en_segundo_plano(evento, datos)
 

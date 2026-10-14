@@ -8,7 +8,7 @@ Claude Code te avisa **por voz** cuando termina una tarea o necesita tu atenció
 - Voz local y gratis con [Piper](https://github.com/OHF-Voice/piper1-gpl): sin API keys, sin GPU.
 - Si varios agentes terminan a la vez, hablan de a uno.
 
-> MVP: por ahora solo Linux.
+Funciona en **Linux, macOS y Windows**.
 
 ## Instalación
 
@@ -19,15 +19,27 @@ Dentro de Claude Code:
 /plugin install voice@claude-voice
 ```
 
-La primera sesión instala el motor de voz en segundo plano (~300 MB, una sola vez) y avisa "ya tengo voz" cuando termina. Mientras tanto usa la voz del sistema (`spd-say`).
+La primera sesión instala el motor de voz en segundo plano (~300 MB, una sola vez) y avisa "ya tengo voz" cuando termina. Mientras tanto usa la voz del sistema.
 
-Requisitos: Python 3 y PipeWire o PulseAudio. No hace falta `python3-venv`: si falta, el plugin instala pip por su cuenta.
+Requisitos: **Python 3.9 o superior**. El resto depende del sistema:
+
+| Sistema | Qué hace falta | Voz mientras se instala |
+|---|---|---|
+| Linux | PipeWire o PulseAudio (lo normal en cualquier escritorio). No hace falta `python3-venv`: si falta, el plugin instala pip por su cuenta. | `spd-say` |
+| macOS | Nada más: si no tenés Python, `python3` te ofrece instalarlo la primera vez. | `say` |
+| Windows | Python desde [python.org](https://www.python.org/downloads/) o `winget install Python.Python.3.12`. Claude Code tiene que usar Git Bash para los hooks (lo normal si instalaste Git for Windows). | la voz de Windows |
 
 ## Configuración
 
-Al instalar, el plugin te pregunta **cómo querés que te llame**. Para cambiarlo después: desde `/plugin`, en las opciones de **voice**, o con `claude plugin configure voice@claude-voice`. Si lo dejás vacío usa el primer nombre de tu usuario del sistema; con un guion (`-`) no dice ningún nombre.
+Al instalar, el plugin te pregunta **cómo querés que te llame**. Para cambiarlo después: desde `/plugin`, en las opciones de **voice**, o con `claude plugin configure voice@claude-voice`. Si lo dejás vacío usa el primer nombre de tu usuario del sistema (en Windows no dice nombre); con un guion (`-`) no dice ningún nombre.
 
-Opcional, en `~/.config/claude-voice/config.json`:
+Opcional, un `config.json`:
+
+- Linux: `~/.config/claude-voice/config.json`
+- macOS: `~/Library/Application Support/claude-voice/config.json`
+- Windows: `%APPDATA%\claude-voice\config.json`
+
+
 
 ```json
 { "voz": "es_AR-daniela-high" }
@@ -46,6 +58,10 @@ Tres hooks de Claude Code:
 | `Stop` | Dice que terminó, el nombre del proyecto y el resumen. |
 | `Notification` | Avisa cuando Claude espera tu aprobación o una respuesta. |
 
-El hook responde en milisegundos y todo lo lento (generar y reproducir la voz) corre en segundo plano. Las frases fijas quedan en caché en `~/.local/share/claude-voice/cache`. Si algo no suena, mirá `~/.local/share/claude-voice/claude-voice.log`.
+El hook responde en milisegundos y todo lo lento (generar y reproducir la voz) corre en segundo plano. Las frases fijas quedan en caché en la carpeta de datos del plugin, y ahí mismo está `claude-voice.log` por si algo no suena:
+
+- Linux: `~/.local/share/claude-voice`
+- macOS: `~/Library/Application Support/claude-voice`
+- Windows: `%LOCALAPPDATA%\claude-voice`
 
 No funciona en sesiones en la nube (el audio sonaría en el servidor) ni dentro de WSL.
