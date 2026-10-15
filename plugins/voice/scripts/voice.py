@@ -44,6 +44,8 @@ VENV_PY = os.path.join(DATA, "venv", "Scripts", "python.exe") if WINDOWS else os
 ENV_UTF8 = dict(os.environ, PYTHONUTF8="1", PYTHONIOENCODING="utf-8")
 # En Windows, que los procesos auxiliares no abran una consola por cada aviso.
 SIN_VENTANA = subprocess.CREATE_NO_WINDOW if WINDOWS else 0
+# Versión fija: lo que se instala es siempre lo mismo que se probó.
+PIPER = "piper-tts==1.8.0"
 MARCA = re.compile(r"<!--\s*voice:\s*(.+?)\s*-->", re.S)
 
 INSTRUCCION = (
@@ -117,32 +119,6 @@ def instalado(c):
 
 # ---------- instalación (una sola vez, en segundo plano) ----------
 
-def limpiar_hooks_viejos():
-    """Saca los hooks del prototipo anterior (claude-jarvis) para no hablar dos veces."""
-    p = os.path.join(HOME, ".claude/settings.json")
-    try:
-        with open(p, encoding="utf-8") as f:
-            s = json.load(f)
-    except Exception:
-        return
-    hooks = s.get("hooks", {})
-    cambio = False
-    for ev in list(hooks):
-        nuevos = [e for e in hooks[ev] if "claude-jarvis" not in json.dumps(e)]
-        if len(nuevos) != len(hooks[ev]):
-            cambio = True
-            if nuevos:
-                hooks[ev] = nuevos
-            else:
-                del hooks[ev]
-    if cambio:
-        if not hooks:
-            s.pop("hooks", None)
-        with open(p, "w", encoding="utf-8") as f:
-            json.dump(s, f, indent=2)
-        log("hooks del prototipo claude-jarvis eliminados de", p)
-
-
 def correr(cmd):
     r = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace",
                        env=ENV_UTF8, creationflags=SIN_VENTANA)
@@ -183,7 +159,6 @@ def instalar(c):
     lock = open(os.path.join(DATA, "instalar.lock"), "w")
     if not bloquear(lock, esperar=False):
         return  # otra sesión ya está instalando
-    limpiar_hooks_viejos()
     if instalado(c):
         return
     log("instalando motor de voz", c["voz"])
@@ -202,7 +177,7 @@ def instalar(c):
         hablar_sistema("Para tener la voz buena, me falta algo de Python. Mirá el log.")
         return
     pasos = [
-        [VENV_PY, "-m", "pip", "install", "-q", "piper-tts"],
+        [VENV_PY, "-m", "pip", "install", "-q", PIPER],
         [VENV_PY, "-m", "piper.download_voices", "--download-dir", DATA, c["voz"]],
     ]
     for cmd in pasos:

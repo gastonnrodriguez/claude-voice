@@ -1,13 +1,18 @@
 {
   "name": "voice",
-  "version": "0.3.0",
-  "description": "Claude te avisa por voz cuando termina una tarea o necesita tu atención.",
-  "author": { "name": "Gastón Rodríguez" },
+  "displayName": "Voice",
+  "version": "0.3.1",
+  "description": "Spoken notifications for Claude Code: hear when Claude finishes a task or needs your attention, with a one-line summary Claude writes itself. Local text-to-speech with Piper, no API keys.",
+  "author": { "name": "Gastón Rodríguez", "url": "https://github.com/gastonnrodriguez" },
+  "homepage": "https://github.com/gastonnrodriguez/claude-voice",
+  "repository": "https://github.com/gastonnrodriguez/claude-voice",
+  "license": "Apache-2.0",
+  "keywords": ["notifications", "voice", "text-to-speech", "tts", "piper", "hooks", "accessibility"],
   "userConfig": {
     "nombre": {
       "type": "string",
-      "title": "Cómo querés que te llame",
-      "description": "El nombre con el que empieza cada aviso, por ejemplo \"Gastón, terminé en tienda online\". Vacío usa el primer nombre de tu usuario del sistema (en Windows, ninguno); un guion (-) no dice ningún nombre.",
+      "title": "What should it call you?",
+      "description": "The name each notification starts with, e.g. \"Gastón, terminé en tienda online\". Leave empty to use the first name of your system account (none on Windows); a dash (-) says no name.",
       "default": ""
     }
   }
