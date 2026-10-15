@@ -1,4 +1,6 @@
-# claude-voice
+# HeyDev
+
+*"Gastón, terminé en tienda online."*
 
 Claude Code te avisa **por voz** cuando termina una tarea o necesita tu atención, para que puedas dejarlo trabajando en otro monitor sin estar mirándolo.
 
@@ -15,9 +17,11 @@ Funciona en **Linux, macOS y Windows**, y habla **español, inglés, portugués,
 Dentro de Claude Code:
 
 ```
-/plugin marketplace add gastonnrodriguez/claude-voice
-/plugin install voice@claude-voice
+/plugin marketplace add gastonnrodriguez/heydev
+/plugin install heydev@heydev
 ```
+
+¿Lo tenías instalado cuando se llamaba claude-voice? Corré `/plugin uninstall voice@claude-voice` y `/plugin marketplace remove claude-voice`, y volvé a instalarlo con los comandos de arriba. El motor y las voces que ya bajaste se conservan, así que no se descarga nada de nuevo.
 
 La primera sesión instala el motor de voz en segundo plano (~300 MB, una sola vez) y avisa "ya tengo voz" cuando termina. Mientras tanto usa la voz del sistema.
 
@@ -31,7 +35,7 @@ Requisitos: **Python 3.9 o superior**. El resto depende del sistema:
 
 ## Configuración
 
-Al instalar, el plugin te pregunta tres cosas. Para cambiarlas después: desde `/plugin`, en las opciones de **voice**.
+Al instalar, el plugin te pregunta tres cosas. Para cambiarlas después: desde `/plugin`, en las opciones de **heydev**.
 
 - **Cómo querés que te llame.** Vacío usa el primer nombre de tu usuario del sistema (en Windows no dice nombre); con un guion (`-`) no dice ningún nombre.
 - **Idioma:** `es`, `en`, `pt`, `fr`, `de` o `it`. Las frases, el resumen de Claude y la voz siguen ese idioma. Vacío usa el idioma del sistema (o inglés si no es uno de esos).
@@ -39,9 +43,9 @@ Al instalar, el plugin te pregunta tres cosas. Para cambiarlas después: desde `
 
 Opcional, un `config.json`:
 
-- Linux: `~/.config/claude-voice/config.json`
-- macOS: `~/Library/Application Support/claude-voice/config.json`
-- Windows: `%APPDATA%\claude-voice\config.json`
+- Linux: `~/.config/heydev/config.json`
+- macOS: `~/Library/Application Support/heydev/config.json`
+- Windows: `%APPDATA%\heydev\config.json`
 
 
 
@@ -61,10 +65,10 @@ Tres hooks de Claude Code:
 | `Stop` | Dice que terminó, el nombre del proyecto y el resumen. |
 | `Notification` | Avisa cuando Claude espera tu aprobación o una respuesta. |
 
-El hook responde en milisegundos y todo lo lento (generar y reproducir la voz) corre en segundo plano. Las frases fijas quedan en caché en la carpeta de datos del plugin, y ahí mismo está `claude-voice.log` por si algo no suena:
+El hook responde en milisegundos y todo lo lento (generar y reproducir la voz) corre en segundo plano. Las frases fijas quedan en caché en la carpeta de datos del plugin, y ahí mismo está `heydev.log` por si algo no suena:
 
-- Linux: `~/.local/share/claude-voice`
-- macOS: `~/Library/Application Support/claude-voice`
-- Windows: `%LOCALAPPDATA%\claude-voice`
+- Linux: `~/.local/share/heydev`
+- macOS: `~/Library/Application Support/heydev`
+- Windows: `%LOCALAPPDATA%\heydev`
 
 No funciona en sesiones en la nube (el audio sonaría en el servidor) ni dentro de WSL.

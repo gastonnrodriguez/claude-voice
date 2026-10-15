@@ -1,4 +1,4 @@
-# Voice: spoken notifications for Claude Code
+# HeyDev: spoken notifications for Claude Code
 
 Claude Code tells you **out loud** when it finishes a task or needs your attention, so you can leave it working on another monitor without watching it.
 
@@ -15,9 +15,11 @@ Speaks **English, Spanish, Portuguese, French, German and Italian**: the phrases
 ## Install
 
 ```
-/plugin marketplace add gastonnrodriguez/claude-voice
-/plugin install voice@claude-voice
+/plugin marketplace add gastonnrodriguez/heydev
+/plugin install heydev@heydev
 ```
+
+Used it when it was called claude-voice? Run `/plugin uninstall voice@claude-voice` and `/plugin marketplace remove claude-voice`, then install it again. The engine and the voices you downloaded carry over, so nothing is downloaded again.
 
 The first session installs the speech engine in the background (about 300 MB, once) and says it has its voice when done. Until then it uses the system voice.
 
@@ -31,7 +33,7 @@ Requirements: **Python 3.9 or later**.
 
 ## Configuration
 
-When you install it, the plugin asks three things. Change them later from `/plugin`, in the options for **voice**.
+When you install it, the plugin asks three things. Change them later from `/plugin`, in the options for **heydev**.
 
 | Option | What it does | If you leave it empty |
 |---|---|---|
@@ -43,9 +45,9 @@ Default voices: `en_US-lessac-high`, `es_AR-daniela-high`, `pt_BR-faber-medium`,
 
 Optionally, a `config.json`:
 
-- Linux: `~/.config/claude-voice/config.json`
-- macOS: `~/Library/Application Support/claude-voice/config.json`
-- Windows: `%APPDATA%\claude-voice\config.json`
+- Linux: `~/.config/heydev/config.json`
+- macOS: `~/Library/Application Support/heydev/config.json`
+- Windows: `%APPDATA%\heydev\config.json`
 
 ```json
 { "idioma": "en", "voz": "en_GB-alba-medium", "nombre": "Gastón" }
@@ -67,11 +69,11 @@ The hook returns in milliseconds; everything slow (synthesis and playback) runs 
 
 ## What it runs, downloads and stores
 
-Everything the plugin does, so you can audit it. The source is plain, readable Python in `scripts/voice.py`, plus a small launcher in `scripts/voice.sh`.
+Everything the plugin does, so you can audit it. The source is plain, readable Python in `scripts/heydev.py`, plus a small launcher in `scripts/heydev.sh`.
 
 **Runs locally**
 
-- `scripts/voice.sh`, which finds a working Python 3.9+ (`python3`, `python` or `py -3`) and runs `scripts/voice.py` with only the standard library.
+- `scripts/heydev.sh`, which finds a working Python 3.9+ (`python3`, `python` or `py -3`) and runs `scripts/heydev.py` with only the standard library.
 - An audio player: `afplay` (macOS), `winsound` (Windows), or `pw-play` / `paplay` / `aplay` (Linux).
 - Until Piper is installed, the system voice: `spd-say` (Linux), `say` (macOS), or PowerShell's `System.Speech` (Windows).
 
@@ -88,18 +90,18 @@ After that it makes no network connections. Speech is generated on your machine.
 - The JSON that Claude Code passes to each hook, and, if the summary is not in it, the end of the session transcript file Claude Code points to, to find the `<!-- voice: ... -->` comment.
 - Your `config.json`, if you created one, and on macOS the system language (`defaults read -g AppleLocale`) when no language is set.
 
-**Writes**, only in its data folder (`~/.local/share/claude-voice` on Linux, `~/Library/Application Support/claude-voice` on macOS, `%LOCALAPPDATA%\claude-voice` on Windows):
+**Writes**, only in its data folder (`~/.local/share/heydev` on Linux, `~/Library/Application Support/heydev` on macOS, `%LOCALAPPDATA%\heydev` on Windows):
 
 - The virtual environment and the voice model.
 - Cached audio of fixed phrases (`cache/`) and temporary audio of summaries (`tmp/`, deleted after playing).
-- Lock files and a log, `claude-voice.log`. Look there if nothing plays.
+- Lock files and a log, `heydev.log`. Look there if nothing plays.
 
 It sends nothing anywhere: no analytics, no telemetry, and your summaries never leave your machine.
 
 ## Contributing
 
-Bugs, ideas and voices that sound good in your language are welcome as [issues](https://github.com/gastonnrodriguez/claude-voice/issues), and pull requests too. Reports from macOS and Windows are especially useful.
+Bugs, ideas and voices that sound good in your language are welcome as [issues](https://github.com/gastonnrodriguez/heydev/issues), and pull requests too. Reports from macOS and Windows are especially useful.
 
 ## License
 
-[Apache 2.0](https://github.com/gastonnrodriguez/claude-voice/blob/main/LICENSE)
+[Apache 2.0](https://github.com/gastonnrodriguez/heydev/blob/main/LICENSE)

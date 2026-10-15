@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""claude-voice — avisos por voz para Claude Code (Linux, macOS y Windows; en seis idiomas).
+"""heydev — avisos por voz para Claude Code (Linux, macOS y Windows; en seis idiomas).
 
 Los hooks llaman a este script; el script responde al instante y deja el
 trabajo lento (generar voz, reproducir) a un proceso en segundo plano.
@@ -27,18 +27,31 @@ else:
 
 HOME = os.path.expanduser("~")
 if WINDOWS:
-    _DATA = os.path.join(os.environ.get("LOCALAPPDATA", HOME), "claude-voice")
-    CONF = os.path.join(os.environ.get("APPDATA", HOME), "claude-voice", "config.json")
+    _DATA = os.path.join(os.environ.get("LOCALAPPDATA", HOME), "heydev")
+    CONF = os.path.join(os.environ.get("APPDATA", HOME), "heydev", "config.json")
 elif MAC:
-    _DATA = os.path.join(HOME, "Library", "Application Support", "claude-voice")
+    _DATA = os.path.join(HOME, "Library", "Application Support", "heydev")
     CONF = os.path.join(_DATA, "config.json")
 else:
-    _DATA = os.path.join(HOME, ".local/share/claude-voice")
-    CONF = os.path.join(HOME, ".config/claude-voice/config.json")
-DATA = os.environ.get("CLAUDE_VOICE_HOME", _DATA)
+    _DATA = os.path.join(HOME, ".local/share/heydev")
+    CONF = os.path.join(HOME, ".config/heydev/config.json")
+
+# Hasta la 0.4 el plugin se llamaba claude-voice: mover sus carpetas para no volver a bajar Piper y la voz.
+for _nueva in (_DATA, os.path.dirname(CONF)):
+    _vieja = os.path.join(os.path.dirname(_nueva), "claude-voice")
+    if os.path.isdir(_vieja) and not os.path.exists(_nueva):
+        try:
+            os.rename(_vieja, _nueva)
+            _log_viejo = os.path.join(_nueva, "claude-voice.log")
+            if os.path.exists(_log_viejo):
+                os.rename(_log_viejo, os.path.join(_nueva, "heydev.log"))
+        except OSError:
+            pass
+
+DATA = os.environ.get("HEYDEV_HOME", _DATA)
 CACHE = os.path.join(DATA, "cache")
 TMP = os.path.join(DATA, "tmp")
-LOG = os.path.join(DATA, "claude-voice.log")
+LOG = os.path.join(DATA, "heydev.log")
 VENV_PY = os.path.join(DATA, "venv", "Scripts", "python.exe") if WINDOWS else os.path.join(DATA, "venv/bin/python")
 # Piper lee el texto por stdin: en Windows, sin esto, lo decodifica como cp1252 y rompe los acentos.
 ENV_UTF8 = dict(os.environ, PYTHONUTF8="1", PYTHONIOENCODING="utf-8")
@@ -88,7 +101,7 @@ def instruccion(c):
     """Lo que SessionStart agrega al contexto de Claude. El resumen va en el idioma de la voz."""
     t = IDIOMAS[c["idioma"]]
     return (
-        "[Plugin claude-voice] The user gets a spoken notification when you finish replying. "
+        "[Plugin heydev] The user gets a spoken notification when you finish replying. "
         "At the end of every reply where you finished a task or need the user to do something, "
         "add as the last line an HTML comment in exactly this format: <!-- voice: summary -->. "
         f"The summary: at most 12 words, in {t['nombre']} (it is read aloud in {t['nombre']}), "
@@ -295,9 +308,9 @@ def reproducir(ruta):
 VOZ_WINDOWS = (
     "Add-Type -AssemblyName System.Speech;"
     "$s = New-Object System.Speech.Synthesis.SpeechSynthesizer;"
-    "$v = $s.GetInstalledVoices() | Where-Object { $_.VoiceInfo.Culture.Name -like ($env:CLAUDE_VOICE_IDIOMA + '*') } | Select-Object -First 1;"
+    "$v = $s.GetInstalledVoices() | Where-Object { $_.VoiceInfo.Culture.Name -like ($env:HEYDEV_IDIOMA + '*') } | Select-Object -First 1;"
     "if ($v) { $s.SelectVoice($v.VoiceInfo.Name) };"
-    "$s.Speak($env:CLAUDE_VOICE_TEXTO)"
+    "$s.Speak($env:HEYDEV_TEXTO)"
 )
 
 
@@ -316,7 +329,7 @@ def hablar_sistema(c, texto):
     if WINDOWS:
         # El texto viaja por variable de entorno para no tener que escaparlo en PowerShell.
         subprocess.run(["powershell", "-NoProfile", "-NonInteractive", "-Command", VOZ_WINDOWS],
-                       env=dict(os.environ, CLAUDE_VOICE_TEXTO=texto, CLAUDE_VOICE_IDIOMA=c["idioma"]), capture_output=True,
+                       env=dict(os.environ, HEYDEV_TEXTO=texto, HEYDEV_IDIOMA=c["idioma"]), capture_output=True,
                        creationflags=SIN_VENTANA)
     elif MAC:
         voz = voz_mac(c["idioma"])
@@ -451,7 +464,7 @@ def en_segundo_plano(evento, datos):
 
 def main():
     if len(sys.argv) < 2:
-        print("uso: voice.py session-start|stop|notification|probar")
+        print("uso: heydev.py session-start|stop|notification|probar")
         return
     evento = sys.argv[1]
     if evento == "_trabajo":

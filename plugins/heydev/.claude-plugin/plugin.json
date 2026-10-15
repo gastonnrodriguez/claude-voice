@@ -1,14 +1,14 @@
 {
-  "name": "voice",
-  "displayName": "Voice",
-  "version": "0.4.0",
+  "name": "heydev",
+  "displayName": "HeyDev",
+  "version": "0.5.0",
   "description": "Spoken notifications for Claude Code: hear when Claude finishes a task or needs your attention, with a one-line summary Claude writes itself. English, Spanish, Portuguese, French, German and Italian. Local text-to-speech with Piper, no API keys.",
   "author": {
     "name": "Gastón Rodríguez",
     "url": "https://github.com/gastonnrodriguez"
   },
-  "homepage": "https://github.com/gastonnrodriguez/claude-voice",
-  "repository": "https://github.com/gastonnrodriguez/claude-voice",
+  "homepage": "https://github.com/gastonnrodriguez/heydev",
+  "repository": "https://github.com/gastonnrodriguez/heydev",
   "license": "Apache-2.0",
   "keywords": [
     "notifications",

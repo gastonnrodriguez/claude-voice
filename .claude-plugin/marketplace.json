@@ -1,12 +1,12 @@
 {
-  "name": "claude-voice",
+  "name": "heydev",
   "owner": {
     "name": "Gastón Rodríguez"
   },
   "plugins": [
     {
-      "name": "voice",
-      "source": "./plugins/voice",
+      "name": "heydev",
+      "source": "./plugins/heydev",
       "description": "Hear when Claude finishes a task or needs your attention, with a one-line summary Claude writes itself."
     }
   ],
