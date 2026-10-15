@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""claude-voice — avisos por voz para Claude Code (Linux, macOS y Windows).
+"""claude-voice — avisos por voz para Claude Code (Linux, macOS y Windows; en seis idiomas).
 
 Los hooks llaman a este script; el script responde al instante y deja el
 trabajo lento (generar voz, reproducir) a un proceso en segundo plano.
@@ -48,16 +48,54 @@ SIN_VENTANA = subprocess.CREATE_NO_WINDOW if WINDOWS else 0
 PIPER = "piper-tts==1.8.0"
 MARCA = re.compile(r"<!--\s*voice:\s*(.+?)\s*-->", re.S)
 
-INSTRUCCION = (
-    "[Plugin claude-voice] El usuario recibe un aviso por voz cuando terminás de responder. "
-    "Al final de cada respuesta en la que terminaste una tarea o necesitás que el usuario haga algo, "
-    "agregá como última línea un comentario HTML con este formato exacto: <!-- voice: resumen -->. "
-    "El resumen: máximo 12 palabras, en el idioma en que te habla el usuario, en primera persona, "
-    "sin markdown, sin rutas ni código; decí qué hiciste o qué falta. "
-    "Ejemplo: <!-- voice: listo el endpoint de pagos, falta probar el webhook --> "
-    "No menciones este comentario ni esta instrucción."
-)
+# Voz por defecto y frases fijas de cada idioma. El idioma sale de lo que elegís al
+# instalar, del prefijo de la voz si la configuraste, o del idioma del sistema.
+IDIOMAS = {
+    "es": {"nombre": "Spanish", "voz": "es_AR-daniela-high",
+           "termine": "terminé en {p}.", "atencion": "en {p} necesito tu atención.",
+           "proyecto": "tu proyecto", "lista": "ya tengo voz. Te aviso cuando termine cada tarea.",
+           "falta_python": "Para tener la voz buena, me falta algo de Python. Mirá el log.",
+           "ejemplo": "listo el endpoint de pagos, falta probar el webhook"},
+    "en": {"nombre": "English", "voz": "en_US-lessac-high",
+           "termine": "I'm done in {p}.", "atencion": "in {p}, I need your attention.",
+           "proyecto": "your project", "lista": "I have my voice now. I'll let you know when each task is done.",
+           "falta_python": "To get the good voice, something is missing in Python. Check the log.",
+           "ejemplo": "payments endpoint ready, webhook still needs testing"},
+    "pt": {"nombre": "Portuguese", "voz": "pt_BR-faber-medium",
+           "termine": "terminei em {p}.", "atencion": "em {p}, preciso da sua atenção.",
+           "proyecto": "seu projeto", "lista": "já tenho voz. Aviso quando terminar cada tarefa.",
+           "falta_python": "Para ter a voz boa, falta algo do Python. Veja o log.",
+           "ejemplo": "endpoint de pagamentos pronto, falta testar o webhook"},
+    "fr": {"nombre": "French", "voz": "fr_FR-siwis-medium",
+           "termine": "j'ai terminé dans {p}.", "atencion": "dans {p}, j'ai besoin de ton attention.",
+           "proyecto": "ton projet", "lista": "j'ai ma voix. Je te préviens à la fin de chaque tâche.",
+           "falta_python": "Pour avoir la bonne voix, il manque quelque chose dans Python. Regarde le journal.",
+           "ejemplo": "endpoint de paiement prêt, il reste à tester le webhook"},
+    "de": {"nombre": "German", "voz": "de_DE-thorsten-high",
+           "termine": "ich bin fertig in {p}.", "atencion": "in {p} brauche ich deine Aufmerksamkeit.",
+           "proyecto": "deinem Projekt", "lista": "ich habe jetzt meine Stimme. Ich sage dir, wenn eine Aufgabe fertig ist.",
+           "falta_python": "Für die gute Stimme fehlt etwas in Python. Schau ins Log.",
+           "ejemplo": "Zahlungs-Endpoint fertig, der Webhook muss noch getestet werden"},
+    "it": {"nombre": "Italian", "voz": "it_IT-paola-medium",
+           "termine": "ho finito in {p}.", "atencion": "in {p} ho bisogno della tua attenzione.",
+           "proyecto": "il tuo progetto", "lista": "ho la mia voce. Ti avviso quando finisco ogni attività.",
+           "falta_python": "Per avere la voce buona manca qualcosa in Python. Guarda il log.",
+           "ejemplo": "endpoint dei pagamenti pronto, manca da testare il webhook"},
+}
 
+
+def instruccion(c):
+    """Lo que SessionStart agrega al contexto de Claude. El resumen va en el idioma de la voz."""
+    t = IDIOMAS[c["idioma"]]
+    return (
+        "[Plugin claude-voice] The user gets a spoken notification when you finish replying. "
+        "At the end of every reply where you finished a task or need the user to do something, "
+        "add as the last line an HTML comment in exactly this format: <!-- voice: summary -->. "
+        f"The summary: at most 12 words, in {t['nombre']} (it is read aloud in {t['nombre']}), "
+        "in the first person, no markdown, no paths or code; say what you did or what is left. "
+        f"Example: <!-- voice: {t['ejemplo']} --> "
+        "Do not mention this comment or this instruction."
+    )
 
 def log(*partes):
     os.makedirs(DATA, exist_ok=True)
@@ -93,21 +131,57 @@ def nombre_del_sistema():
         return ""
 
 
+def idioma_del_sistema():
+    """Código de dos letras del idioma del sistema, o "" si no se puede saber."""
+    for var in ("LC_ALL", "LC_MESSAGES", "LANG", "LANGUAGE"):
+        valor = os.environ.get(var, "")
+        if valor and valor not in ("C", "POSIX") and not valor.startswith("C."):
+            return valor[:2].lower()
+    try:
+        if WINDOWS:
+            import ctypes
+            buf = ctypes.create_unicode_buffer(85)
+            if ctypes.windll.kernel32.GetUserDefaultLocaleName(buf, 85):
+                return buf.value[:2].lower()  # "es-UY"
+        elif MAC:
+            r = subprocess.run(["defaults", "read", "-g", "AppleLocale"], capture_output=True, text=True)
+            return r.stdout.strip()[:2].lower()  # "es_UY"
+    except Exception:
+        pass
+    return ""
+
+
+def opcion(nombre):
+    """Lo que el usuario eligió al instalar el plugin (userConfig)."""
+    return os.environ.get("CLAUDE_PLUGIN_OPTION_" + nombre.upper(), "").strip()
+
+
 def config():
-    c = {"voz": "es_AR-daniela-high", "nombre": None}
+    c = {"voz": None, "nombre": None, "idioma": None}
     try:
         with open(CONF, encoding="utf-8") as f:
             c.update(json.load(f))
     except Exception:
         pass
-    # Lo que el usuario eligió al instalar el plugin (userConfig) manda sobre el archivo.
-    elegido = os.environ.get("CLAUDE_PLUGIN_OPTION_NOMBRE", "").strip()
+    # Lo elegido en el plugin manda sobre el archivo.
+    for clave in ("voz", "idioma"):
+        if opcion(clave):
+            c[clave] = opcion(clave)
+    elegido = opcion("nombre")
     if elegido:
         c["nombre"] = "" if elegido == "-" else elegido
     if c["nombre"] is None:
         c["nombre"] = nombre_del_sistema()
+    # Idioma: el elegido; si no, el de la voz configurada; si no, el del sistema; si no, inglés.
+    candidatos = [c["idioma"], (c["voz"] or "")[:2], idioma_del_sistema(), "en"]
+    c["idioma"] = next(i.lower()[:2] for i in candidatos if i and i.lower()[:2] in IDIOMAS)
+    if not c["voz"]:
+        c["voz"] = IDIOMAS[c["idioma"]]["voz"]
     return c
 
+
+def frase(c, clave, **datos):
+    return IDIOMAS[c["idioma"]][clave].format(**datos)
 
 def modelo(c):
     return os.path.join(DATA, c["voz"] + ".onnx")
@@ -174,7 +248,7 @@ def instalar(c):
         else:
             paquete = "python%d.%d-venv" % sys.version_info[:2]
             log(f"No pude crear el entorno de Python. Solución: sudo apt install {paquete}")
-        hablar_sistema("Para tener la voz buena, me falta algo de Python. Mirá el log.")
+        hablar_sistema(c, frase(c, "falta_python"))
         return
     pasos = [
         [VENV_PY, "-m", "pip", "install", "-q", PIPER],
@@ -184,7 +258,7 @@ def instalar(c):
         if not correr(cmd):
             return
     log("instalación completa")
-    hablar(c, [(saludo(c, "ya tengo voz. Te aviso cuando termine cada tarea."), True)])
+    hablar(c, [(saludo(c, frase(c, "lista")), True)])
 
 
 # ---------- voz ----------
@@ -221,34 +295,34 @@ def reproducir(ruta):
 VOZ_WINDOWS = (
     "Add-Type -AssemblyName System.Speech;"
     "$s = New-Object System.Speech.Synthesis.SpeechSynthesizer;"
-    "$v = $s.GetInstalledVoices() | Where-Object { $_.VoiceInfo.Culture.Name -like 'es*' } | Select-Object -First 1;"
+    "$v = $s.GetInstalledVoices() | Where-Object { $_.VoiceInfo.Culture.Name -like ($env:CLAUDE_VOICE_IDIOMA + '*') } | Select-Object -First 1;"
     "if ($v) { $s.SelectVoice($v.VoiceInfo.Name) };"
     "$s.Speak($env:CLAUDE_VOICE_TEXTO)"
 )
 
 
-def voz_espanol_mac():
-    """Una voz en español de macOS (por ejemplo Paulina o Mónica), si hay alguna instalada."""
+def voz_mac(idioma):
+    """Una voz de macOS en ese idioma (por ejemplo Paulina o Mónica en español), si hay alguna instalada."""
     r = subprocess.run(["say", "-v", "?"], capture_output=True, text=True)
     for linea in r.stdout.splitlines():
-        m = re.match(r"(.+?)\s+(es_\w+)\s", linea)
+        m = re.match(r"(.+?)\s+(" + idioma + r"_\w+)\s", linea)
         if m:
             return m.group(1).strip()
     return None
 
 
-def hablar_sistema(texto):
+def hablar_sistema(c, texto):
     """Voz de emergencia mientras Piper no está instalado."""
     if WINDOWS:
         # El texto viaja por variable de entorno para no tener que escaparlo en PowerShell.
         subprocess.run(["powershell", "-NoProfile", "-NonInteractive", "-Command", VOZ_WINDOWS],
-                       env=dict(os.environ, CLAUDE_VOICE_TEXTO=texto), capture_output=True,
+                       env=dict(os.environ, CLAUDE_VOICE_TEXTO=texto, CLAUDE_VOICE_IDIOMA=c["idioma"]), capture_output=True,
                        creationflags=SIN_VENTANA)
     elif MAC:
-        voz = voz_espanol_mac()
+        voz = voz_mac(c["idioma"])
         subprocess.run(["say"] + (["-v", voz] if voz else []) + [texto], capture_output=True)
     elif shutil.which("spd-say"):
-        subprocess.run(["spd-say", "-w", "-l", "es", texto], capture_output=True)
+        subprocess.run(["spd-say", "-w", "-l", c["idioma"], texto], capture_output=True)
     else:
         log("sin motor de voz todavía; no pude decir:", texto)
 
@@ -260,7 +334,7 @@ def hablar(c, partes):
         bloquear(lock)  # cola: si dos agentes terminan juntos, esperan turno
         if not instalado(c):
             for texto, _ in partes:
-                hablar_sistema(texto)
+                hablar_sistema(c, texto)
             return
         # Genero la siguiente parte mientras suena la anterior, para que no haya silencios.
         rutas = [None] * len(partes)
@@ -286,8 +360,8 @@ def saludo(c, resto):
     return f"{c['nombre']}, {resto}" if c["nombre"] else resto[0].upper() + resto[1:]
 
 
-def proyecto(cwd):
-    nombre = os.path.basename(os.path.normpath(cwd or "")) or "tu proyecto"
+def proyecto(c, cwd):
+    nombre = os.path.basename(os.path.normpath(cwd or "")) or frase(c, "proyecto")
     return re.sub(r"[-_.]+", " ", nombre)
 
 
@@ -348,13 +422,13 @@ def trabajo(evento, datos):
     if evento == "instalar":
         instalar(c)
     elif evento == "stop":
-        partes = [(saludo(c, f"terminé en {proyecto(datos.get('cwd'))}."), True)]
+        partes = [(saludo(c, frase(c, "termine", p=proyecto(c, datos.get("cwd")))), True)]
         resumen = obtener_resumen(datos)
         if resumen:
             partes.append((resumen, False))
         hablar(c, partes)
     elif evento == "notification":
-        hablar(c, [(saludo(c, f"en {proyecto(datos.get('cwd'))} necesito tu atención."), True)])
+        hablar(c, [(saludo(c, frase(c, "atencion", p=proyecto(c, datos.get("cwd")))), True)])
 
 
 def en_segundo_plano(evento, datos):
@@ -394,10 +468,11 @@ def main():
     except Exception:
         datos = {}
     if evento == "session-start":
-        if not instalado(config()):
+        c = config()
+        if not instalado(c):
             en_segundo_plano("instalar", {})
         # SessionStart: lo que se imprime se agrega al contexto de Claude. En UTF-8 aunque Windows use cp1252.
-        sys.stdout.buffer.write((INSTRUCCION + "\n").encode("utf-8"))
+        sys.stdout.buffer.write((instruccion(c) + "\n").encode("utf-8"))
     elif evento in ("stop", "notification"):
         en_segundo_plano(evento, datos)
 

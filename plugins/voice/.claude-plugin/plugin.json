@@ -1,18 +1,41 @@
 {
   "name": "voice",
   "displayName": "Voice",
-  "version": "0.3.1",
-  "description": "Spoken notifications for Claude Code: hear when Claude finishes a task or needs your attention, with a one-line summary Claude writes itself. Local text-to-speech with Piper, no API keys.",
-  "author": { "name": "Gastón Rodríguez", "url": "https://github.com/gastonnrodriguez" },
+  "version": "0.4.0",
+  "description": "Spoken notifications for Claude Code: hear when Claude finishes a task or needs your attention, with a one-line summary Claude writes itself. English, Spanish, Portuguese, French, German and Italian. Local text-to-speech with Piper, no API keys.",
+  "author": {
+    "name": "Gastón Rodríguez",
+    "url": "https://github.com/gastonnrodriguez"
+  },
   "homepage": "https://github.com/gastonnrodriguez/claude-voice",
   "repository": "https://github.com/gastonnrodriguez/claude-voice",
   "license": "Apache-2.0",
-  "keywords": ["notifications", "voice", "text-to-speech", "tts", "piper", "hooks", "accessibility"],
+  "keywords": [
+    "notifications",
+    "voice",
+    "text-to-speech",
+    "tts",
+    "piper",
+    "hooks",
+    "accessibility"
+  ],
   "userConfig": {
     "nombre": {
       "type": "string",
       "title": "What should it call you?",
-      "description": "The name each notification starts with, e.g. \"Gastón, terminé en tienda online\". Leave empty to use the first name of your system account (none on Windows); a dash (-) says no name.",
+      "description": "The name each notification starts with, e.g. \"Gastón, I'm done in online store\". Leave empty to use the first name of your system account (none on Windows); a dash (-) says no name.",
+      "default": ""
+    },
+    "idioma": {
+      "type": "string",
+      "title": "Language",
+      "description": "Language for the phrases, the summary and the default voice: en, es, pt, fr, de or it. Leave empty to use your system language.",
+      "default": ""
+    },
+    "voz": {
+      "type": "string",
+      "title": "Voice (optional)",
+      "description": "Any voice from the Piper catalogue, e.g. en_GB-alba-medium or es_MX-claude-high. Leave empty for the default voice of your language.",
       "default": ""
     }
   }

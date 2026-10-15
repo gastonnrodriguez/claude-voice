@@ -1,6 +1,6 @@
 # claude-voice
 
-Spoken notifications for Claude Code: hear when Claude finishes a task or needs your attention, with a one-line summary Claude writes itself. Local text-to-speech with [Piper](https://github.com/OHF-Voice/piper1-gpl), no API keys. Linux, macOS and Windows.
+Spoken notifications for Claude Code: hear when Claude finishes a task or needs your attention, with a one-line summary Claude writes itself. Six languages. Local text-to-speech with [Piper](https://github.com/OHF-Voice/piper1-gpl), no API keys. Linux, macOS and Windows.
 
 ```
 /plugin marketplace add gastonnrodriguez/claude-voice

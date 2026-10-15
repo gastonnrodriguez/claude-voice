@@ -8,7 +8,7 @@ Claude Code te avisa **por voz** cuando termina una tarea o necesita tu atenció
 - Voz local y gratis con [Piper](https://github.com/OHF-Voice/piper1-gpl): sin API keys, sin GPU.
 - Si varios agentes terminan a la vez, hablan de a uno.
 
-Funciona en **Linux, macOS y Windows**.
+Funciona en **Linux, macOS y Windows**, y habla **español, inglés, portugués, francés, alemán e italiano**.
 
 ## Instalación
 
@@ -31,7 +31,11 @@ Requisitos: **Python 3.9 o superior**. El resto depende del sistema:
 
 ## Configuración
 
-Al instalar, el plugin te pregunta **cómo querés que te llame**. Para cambiarlo después: desde `/plugin`, en las opciones de **voice**, o con `claude plugin configure voice@claude-voice`. Si lo dejás vacío usa el primer nombre de tu usuario del sistema (en Windows no dice nombre); con un guion (`-`) no dice ningún nombre.
+Al instalar, el plugin te pregunta tres cosas. Para cambiarlas después: desde `/plugin`, en las opciones de **voice**.
+
+- **Cómo querés que te llame.** Vacío usa el primer nombre de tu usuario del sistema (en Windows no dice nombre); con un guion (`-`) no dice ningún nombre.
+- **Idioma:** `es`, `en`, `pt`, `fr`, `de` o `it`. Las frases, el resumen de Claude y la voz siguen ese idioma. Vacío usa el idioma del sistema (o inglés si no es uno de esos).
+- **Voz:** cualquiera del [catálogo de Piper](https://huggingface.co/rhasspy/piper-voices). Vacío usa la voz por defecto del idioma (en español, `es_AR-daniela-high`).
 
 Opcional, un `config.json`:
 
@@ -42,11 +46,10 @@ Opcional, un `config.json`:
 
 
 ```json
-{ "voz": "es_AR-daniela-high" }
+{ "idioma": "es", "voz": "es_AR-daniela-high", "nombre": "Gastón" }
 ```
 
-- `voz`: cualquier voz del [catálogo de Piper](https://huggingface.co/rhasspy/piper-voices).
-- `nombre`: también se puede poner acá; lo que elijas en el plugin tiene prioridad.
+- Estas tres opciones también se pueden poner acá (`nombre`, `idioma`, `voz`); lo que elijas en el plugin tiene prioridad.
 
 ## Cómo funciona
 
