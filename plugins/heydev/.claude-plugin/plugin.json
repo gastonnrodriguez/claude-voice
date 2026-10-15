@@ -9,6 +9,9 @@
   },
   "homepage": "https://github.com/gastonnrodriguez/heydev",
   "repository": "https://github.com/gastonnrodriguez/heydev",
+  "documentationUrl": "https://github.com/gastonnrodriguez/heydev/blob/main/plugins/heydev/README.md",
+  "privacyPolicyUrl": "https://github.com/gastonnrodriguez/heydev/blob/main/plugins/heydev/README.md#what-it-runs-downloads-and-stores",
+  "supportUrl": "https://github.com/gastonnrodriguez/heydev/issues",
   "license": "Apache-2.0",
   "keywords": [
     "notifications",
